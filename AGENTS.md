@@ -27,6 +27,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 
 | Archivo | Cuándo leerlo |
 |---------|---------------|
+| [CONSIGNAS_TPI.md](CONSIGNAS_TPI.md) | Requisitos de evaluación y alcance del TPI (4 changes, Skill propia y MCP) |
 | [vision.md](knowledge-base/vision.md) | Entender propósito y alcance |
 | [description.md](knowledge-base/description.md) | Descripción general, módulos, límites del MVP |
 | [actors.md](knowledge-base/actors.md) | Auth, RBAC, permisos |
@@ -61,8 +62,8 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 - **Total**: 15 changes en 6 fases (FASE 0-4 = MVP, FASE 5 = segunda etapa).
 - **Camino crítico MVP** (7): `C-01 cancelacion-y-estados-turno → C-02 persistencia-sqlite → C-03 capa-api-desacoplada → C-04 auth-rbac-tenancy → C-05 endpoints-turnos → C-11 frontend-shell → C-12 agenda-turnos-ui`.
-- **Primer change**: `C-01` (`cancelacion-y-estados-turno`).
-- **Completado**: `2026-10-15-crear-turno-sin-solapamientos` ✔ archivado (specs en `openspec/specs/crear-turno/spec.md`).
+- **Completados**: `2026-10-15-crear-turno-sin-solapamientos` ✔, `2026-11-15-c-01-cancelacion-y-estados-turno` ✔.
+- **Siguiente change**: `C-02` (`persistencia-sqlite`).
 
 **Antes de cualquier `/opsx:propose`**: leé [CHANGES.md](CHANGES.md), identificá las dependencias del change y los archivos de "Leer antes".
 

@@ -106,7 +106,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 > Secuencia lineal estricta: `C-01 → C-02 → C-03`. No hay paralelismo en esta fase.
 
 ### [C-01] `cancelacion-y-estados-turno`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-11-15-c-01-cancelacion-y-estados-turno`)
 - **Scope**: Ciclo de vida completo del turno (`RN-03`, `RN-04`) sobre el servicio de dominio existente
   - Máquina de estados: constantes `PENDIENTE`, `CONFIRMADO`, `CANCELADO`, `COMPLETADO` + matriz de transiciones válidas (Confirmar, Cancelar, Completar)
   - `ServicioTurnos`: nuevos métodos `confirmar()`, `cancelar()`, `completar()` que rechazan transiciones inválidas con la nueva excepción de dominio `TransicionInvalidaError`

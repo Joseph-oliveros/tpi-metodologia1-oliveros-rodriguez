@@ -2,6 +2,24 @@
 
 from dataclasses import dataclass
 
+# Constantes canónicas de estados del turno (RN-03)
+ESTADO_PENDIENTE = "PENDIENTE"
+ESTADO_CONFIRMADO = "CONFIRMADO"
+ESTADO_CANCELADO = "CANCELADO"
+ESTADO_COMPLETADO = "COMPLETADO"
+
+# Conjuntos de clasificación de estados
+ESTADOS_ACTIVOS = {ESTADO_PENDIENTE, ESTADO_CONFIRMADO}
+ESTADOS_FINALES = {ESTADO_CANCELADO, ESTADO_COMPLETADO}
+
+# Matriz de transiciones permitidas según el ciclo de vida (RN-03)
+TRANSICIONES_PERMITIDAS: dict[str, set[str]] = {
+    ESTADO_PENDIENTE: {ESTADO_CONFIRMADO, ESTADO_CANCELADO},
+    ESTADO_CONFIRMADO: {ESTADO_COMPLETADO, ESTADO_CANCELADO},
+    ESTADO_CANCELADO: set(),
+    ESTADO_COMPLETADO: set(),
+}
+
 
 @dataclass(frozen=True)
 class Profesional:

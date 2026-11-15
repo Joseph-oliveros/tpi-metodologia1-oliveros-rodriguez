@@ -1,10 +1,22 @@
 """Servicio de dominio para el agendamiento de turnos odontológicos."""
 
+from dataclasses import replace
+
 from src.domain.exceptions import (
     SolapamientoProfesionalError,
     SolapamientoSillonError,
+    TransicionInvalidaError,
 )
-from src.domain.models import Profesional, Sillon, Turno
+from src.domain.models import (
+    ESTADO_CANCELADO,
+    ESTADO_COMPLETADO,
+    ESTADO_CONFIRMADO,
+    ESTADOS_ACTIVOS,
+    TRANSICIONES_PERMITIDAS,
+    Profesional,
+    Sillon,
+    Turno,
+)
 
 
 def _horas_a_minutos(hora: str) -> int:
@@ -43,6 +55,8 @@ class ServicioTurnos:
         fin = _horas_a_minutos(hora_fin)
 
         for turno_existente in self._turnos:
+            if turno_existente.estado not in ESTADOS_ACTIVOS:
+                continue
             if turno_existente.fecha != fecha:
                 continue
             existente_inicio = _horas_a_minutos(turno_existente.hora_inicio)
@@ -75,3 +89,29 @@ class ServicioTurnos:
     def turnos_registrados(self) -> list[Turno]:
         """Devuelve una copia de la lista de turnos registrados."""
         return list(self._turnos)
+
+    def _transicionar(self, turno: Turno, nuevo_estado: str) -> Turno:
+        """Aplica una transición de estado validando la matriz de transiciones permitidas."""
+        if turno not in self._turnos:
+            raise ValueError("El turno especificado no se encuentra registrado")
+        destinos_validos = TRANSICIONES_PERMITIDAS.get(turno.estado, set())
+        if nuevo_estado not in destinos_validos:
+            raise TransicionInvalidaError(
+                f"Transición no permitida: no se puede pasar de '{turno.estado}' a '{nuevo_estado}'"
+            )
+        turno_actualizado = replace(turno, estado=nuevo_estado)
+        indice = self._turnos.index(turno)
+        self._turnos[indice] = turno_actualizado
+        return turno_actualizado
+
+    def confirmar(self, turno: Turno) -> Turno:
+        """Confirma un turno en estado PENDIENTE."""
+        return self._transicionar(turno, ESTADO_CONFIRMADO)
+
+    def cancelar(self, turno: Turno) -> Turno:
+        """Cancela un turno en estado PENDIENTE o CONFIRMADO."""
+        return self._transicionar(turno, ESTADO_CANCELADO)
+
+    def completar(self, turno: Turno) -> Turno:
+        """Marca como completado un turno en estado CONFIRMADO."""
+        return self._transicionar(turno, ESTADO_COMPLETADO)
