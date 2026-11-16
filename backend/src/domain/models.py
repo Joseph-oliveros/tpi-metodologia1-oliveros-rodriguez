@@ -1,6 +1,7 @@
 """Modelos de dominio para la gestión de turnos odontológicos."""
 
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 
 # Constantes canónicas de estados del turno (RN-03)
 ESTADO_PENDIENTE = "PENDIENTE"
@@ -21,11 +22,37 @@ TRANSICIONES_PERMITIDAS: dict[str, set[str]] = {
 }
 
 
+def _generar_id() -> str:
+    """Genera un identificador único sintético."""
+    return uuid.uuid4().hex[:12]
+
+
+@dataclass(frozen=True)
+class Tenant:
+    """Clínica o consultorio aislado dentro del SaaS (D-01, RN-05)."""
+
+    nombre: str
+    id: str = field(default_factory=_generar_id, compare=False)
+
+
+@dataclass(frozen=True)
+class Paciente:
+    """Paciente que recibe la atención odontológica."""
+
+    nombre: str
+    dni: str = ""
+    id: str = field(default_factory=_generar_id, compare=False)
+    tenant_id: str = "tenant-default"
+
+
 @dataclass(frozen=True)
 class Profesional:
     """Profesional de la salud que atiende turnos."""
 
     nombre: str
+    id: str = field(default_factory=_generar_id, compare=False)
+    tenant_id: str = "tenant-default"
+    activo: bool = True
 
 
 @dataclass(frozen=True)
@@ -33,11 +60,14 @@ class Sillon:
     """Sillón/box odontológico en el que se realiza la atención."""
 
     nombre: str
+    id: str = field(default_factory=_generar_id, compare=False)
+    tenant_id: str = "tenant-default"
+    activo: bool = True
 
 
 @dataclass(frozen=True)
 class Turno:
-    """Turno odontológico confirmado en un intervalo semiabierto [hora_inicio, hora_fin)."""
+    """Turno odontológico en un intervalo semiabierto [hora_inicio, hora_fin)."""
 
     profesional: Profesional
     sillon: Sillon
@@ -46,3 +76,5 @@ class Turno:
     hora_fin: str
     paciente: str
     estado: str = "CONFIRMADO"
+    id: str = field(default_factory=_generar_id, compare=False)
+    tenant_id: str = "tenant-default"

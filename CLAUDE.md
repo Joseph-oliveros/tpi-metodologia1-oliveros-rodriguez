@@ -62,8 +62,8 @@ El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 - **Total**: 15 changes en 6 fases (FASE 0-4 = MVP, FASE 5 = segunda etapa).
 - **Camino crítico MVP** (7): `C-01 cancelacion-y-estados-turno → C-02 persistencia-sqlite → C-03 capa-api-desacoplada → C-04 auth-rbac-tenancy → C-05 endpoints-turnos → C-11 frontend-shell → C-12 agenda-turnos-ui`.
-- **Completados**: `2026-10-15-crear-turno-sin-solapamientos` ✔, `2026-11-15-c-01-cancelacion-y-estados-turno` ✔.
-- **Siguiente change**: `C-02` (`persistencia-sqlite`).
+- **Completados**: `2026-10-15-crear-turno-sin-solapamientos` ✔, `2026-11-15-c-01-cancelacion-y-estados-turno` ✔, `2026-11-15-c-02-persistencia-sqlite` ✔.
+- **Siguiente change**: `C-03` (`capa-api-desacoplada`).
 
 **Antes de cualquier `/opsx:propose`**: leé [CHANGES.md](CHANGES.md), identificá las dependencias del change y los archivos de "Leer antes".
 

@@ -40,7 +40,7 @@ El alcance mínimo planificado para la entrega del TPI comprende la ejecución y
 |---|---------------|----------------------|--------|
 | **1** | `2026-10-15-crear-turno-sin-solapamientos` | Creación de turnos con doble validación de recursos (profesional y sillón/box) bajo intervalos semiabiertos $[inicio, fin)$ *(Base Parcial 2)*. | **Archivado** ✔ |
 | **2** | `C-01` | `cancelacion-y-estados-turno`: Ciclo de vida y máquina de estados del turno (confirmar, cancelar, completar) y reglas de liberación de recursos por cancelación (`RN-03`, `RN-04`). | **Archivado** ✔ |
-| **3** | `C-02` | `persistencia-sqlite`: Capa de persistencia con base de datos SQLite real para tests y desarrollo (sin mockear la BD), repositorios y mapeo de entidades de dominio. | *Planificado* |
+| **3** | `C-02` | `persistencia-sqlite`: Capa de persistencia con base de datos SQLite real para tests y desarrollo (sin mockear la BD), repositorios y mapeo de entidades de dominio. | **Archivado** ✔ |
 | **4** | `C-03` | `capa-api-desacoplada`: Exposición de endpoints HTTP mediante **FastAPI** con documentación interactiva **Swagger/OpenAPI**, desacoplada del dominio puro. | *Planificado* |
 
 ---
@@ -51,7 +51,7 @@ El alcance mínimo planificado para la entrega del TPI comprende la ejecución y
 - [ ] **Mínimo 4 Changes Completos y Archivados:**
   - [x] 1. `2026-10-15-crear-turno-sin-solapamientos` (Archivado en `openspec/changes/archive/2026-10-15-crear-turno-sin-solapamientos/`)
   - [x] 2. `C-01 cancelacion-y-estados-turno` (Archivado en `openspec/changes/archive/2026-11-15-c-01-cancelacion-y-estados-turno/`)
-  - [ ] 3. `C-02 persistencia-sqlite`
+  - [x] 3. `C-02 persistencia-sqlite` (Archivado en `openspec/changes/archive/2026-11-15-c-02-persistencia-sqlite/`)
   - [ ] 4. `C-03 capa-api-desacoplada`
 - [ ] **Ciclo SDD riguroso:** Propose $\to$ Apply $\to$ Pytest verde $\to$ Archive.
 - [ ] **Skill propia** creada y documentada.

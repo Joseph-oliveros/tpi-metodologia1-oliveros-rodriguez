@@ -124,7 +124,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 ---
 
 ### [C-02] `persistencia-sqlite`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-11-15-c-02-persistencia-sqlite`)
 - **Scope**: Salida de la lista en memoria (`ServicioTurnos._turnos`) y persistencia real con repositorios
   - Migración 001 (SQLite, `D-04`): tablas `tenant`, `profesional`, `sillon`, `paciente`, `turno` con `tenant_id`, FKs, `estado` como enum y campos `fecha_hora_inicio` / `fecha_hora_fin`
   - Repositorios: `RepositorioTurnos`, `RepositorioProfesionales`, `RepositorioSillones`, `RepositorioPacientes` — todos filtran por `tenant_id` (`RN-05`)

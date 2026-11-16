@@ -7,3 +7,13 @@ htmlcov/
 .pytest_cache/
 __pycache__/
 venv/
+
+# Variables de entorno y secretos (D-05, regla dura 6)
+.env
+*.env
+!.env.example
+
+# Bases de datos SQLite
+*.db
+*.sqlite
+*.sqlite3

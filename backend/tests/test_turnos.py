@@ -45,6 +45,22 @@ def test_modelos_dominio_disponibles() -> None:
     assert turno.profesional.nombre == "Dr. Pérez"
     assert turno.sillon.nombre == "Sillón 1"
     assert turno.estado == "CONFIRMADO"
+    assert turno.tenant_id == "tenant-default"
+    assert turno.id != ""
+
+
+def test_entidades_tenant_y_paciente_disponibles() -> None:
+    """Task 3.1: Tenant y Paciente disponibles con tenant_id e id."""
+    from src.domain.models import Paciente, Tenant
+
+    tenant = Tenant(nombre="Clínica Dental Norte", id="tenant-1")
+    assert tenant.nombre == "Clínica Dental Norte"
+    assert tenant.id == "tenant-1"
+
+    paciente = Paciente(nombre="Paciente Ficticio", dni="12345678", tenant_id="tenant-1")
+    assert paciente.nombre == "Paciente Ficticio"
+    assert paciente.tenant_id == "tenant-1"
+    assert paciente.id != ""
 
 
 def test_constantes_y_matriz_de_estados() -> None:

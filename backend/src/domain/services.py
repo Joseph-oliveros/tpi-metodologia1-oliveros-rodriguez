@@ -11,12 +11,13 @@ from src.domain.models import (
     ESTADO_CANCELADO,
     ESTADO_COMPLETADO,
     ESTADO_CONFIRMADO,
-    ESTADOS_ACTIVOS,
     TRANSICIONES_PERMITIDAS,
     Profesional,
     Sillon,
     Turno,
 )
+from src.persistence.database import get_connection, init_db
+from src.persistence.repositories import RepositorioTurnos
 
 
 def _horas_a_minutos(hora: str) -> int:
@@ -36,10 +37,45 @@ def _hay_solapamiento(
 
 
 class ServicioTurnos:
-    """Registra turnos validando solapamientos por profesional y por sillón de forma independiente."""
+    """Registra turnos validando solapamientos con persistencia SQLite y soporte multi-tenant (D-01, RN-05)."""
 
-    def __init__(self) -> None:
-        self._turnos: list[Turno] = []
+    def __init__(self, repositorio_turnos: RepositorioTurnos | None = None) -> None:
+        self._owned_conn = None
+        if repositorio_turnos is None:
+            conn = get_connection(":memory:")
+            init_db(conn)
+            self._owned_conn = conn
+            self._repo = RepositorioTurnos(conn)
+        else:
+            self._repo = repositorio_turnos
+
+    def cerrar(self) -> None:
+        """Cierra la conexión a la base de datos si fue creada internamente."""
+        if self._owned_conn is not None:
+            self._owned_conn.close()
+            self._owned_conn = None
+
+    def __del__(self) -> None:
+        self.cerrar()
+
+    @property
+    def _turnos(self):
+        """Adaptador de compatibilidad hacia atrás que redirige a persistencia SQLite."""
+        class _TurnosAdapter:
+            def __init__(self, repo: RepositorioTurnos, tenant_id: str = "tenant-default"):
+                self._repo = repo
+                self._tenant_id = tenant_id
+
+            def append(self, turno: Turno) -> None:
+                self._repo.guardar(turno)
+
+            def __iter__(self):
+                return iter(self._repo.listar_por_tenant(self._tenant_id))
+
+            def __len__(self):
+                return len(self._repo.listar_por_tenant(self._tenant_id))
+
+        return _TurnosAdapter(self._repo)
 
     def agendar_turno(
         self,
@@ -49,27 +85,25 @@ class ServicioTurnos:
         hora_fin: str,
         profesional: Profesional,
         sillon: Sillon,
+        tenant_id: str = "tenant-default",
     ) -> Turno:
-        """Crea y registra un turno si no hay solapamiento de profesional ni de sillón."""
+        """Crea y registra un turno si no hay solapamiento de profesional ni de sillón en el tenant."""
         inicio = _horas_a_minutos(hora_inicio)
         fin = _horas_a_minutos(hora_fin)
 
-        for turno_existente in self._turnos:
-            if turno_existente.estado not in ESTADOS_ACTIVOS:
-                continue
-            if turno_existente.fecha != fecha:
-                continue
+        turnos_activos = self._repo.buscar_activos_por_fecha(tenant_id, fecha)
+        for turno_existente in turnos_activos:
             existente_inicio = _horas_a_minutos(turno_existente.hora_inicio)
             existente_fin = _horas_a_minutos(turno_existente.hora_fin)
             if not _hay_solapamiento(inicio, fin, existente_inicio, existente_fin):
                 continue
             # Doble validación de recurso: profesional y sillón, de forma independiente.
-            if turno_existente.profesional == profesional:
+            if turno_existente.profesional.nombre == profesional.nombre:
                 raise SolapamientoProfesionalError(
                     f"El profesional {profesional.nombre} ya tiene un turno "
                     f"el {fecha} de {turno_existente.hora_inicio} a {turno_existente.hora_fin}"
                 )
-            if turno_existente.sillon == sillon:
+            if turno_existente.sillon.nombre == sillon.nombre:
                 raise SolapamientoSillonError(
                     f"El sillón {sillon.nombre} ya está ocupado "
                     f"el {fecha} de {turno_existente.hora_inicio} a {turno_existente.hora_fin}"
@@ -82,27 +116,26 @@ class ServicioTurnos:
             hora_inicio=hora_inicio,
             hora_fin=hora_fin,
             paciente=paciente,
+            tenant_id=tenant_id,
         )
-        self._turnos.append(turno)
-        return turno
+        return self._repo.guardar(turno)
 
-    def turnos_registrados(self) -> list[Turno]:
-        """Devuelve una copia de la lista de turnos registrados."""
-        return list(self._turnos)
+    def turnos_registrados(self, tenant_id: str = "tenant-default") -> list[Turno]:
+        """Devuelve los turnos registrados del tenant especificado."""
+        return self._repo.listar_por_tenant(tenant_id)
 
     def _transicionar(self, turno: Turno, nuevo_estado: str) -> Turno:
         """Aplica una transición de estado validando la matriz de transiciones permitidas."""
-        if turno not in self._turnos:
+        turno_existente = self._repo.obtener_por_id(turno.tenant_id, turno.id)
+        if not turno_existente:
             raise ValueError("El turno especificado no se encuentra registrado")
-        destinos_validos = TRANSICIONES_PERMITIDAS.get(turno.estado, set())
+        destinos_validos = TRANSICIONES_PERMITIDAS.get(turno_existente.estado, set())
         if nuevo_estado not in destinos_validos:
             raise TransicionInvalidaError(
-                f"Transición no permitida: no se puede pasar de '{turno.estado}' a '{nuevo_estado}'"
+                f"Transición no permitida: no se puede pasar de '{turno_existente.estado}' a '{nuevo_estado}'"
             )
-        turno_actualizado = replace(turno, estado=nuevo_estado)
-        indice = self._turnos.index(turno)
-        self._turnos[indice] = turno_actualizado
-        return turno_actualizado
+        turno_actualizado = replace(turno_existente, estado=nuevo_estado)
+        return self._repo.actualizar(turno_actualizado)
 
     def confirmar(self, turno: Turno) -> Turno:
         """Confirma un turno en estado PENDIENTE."""
