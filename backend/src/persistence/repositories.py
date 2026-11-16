@@ -1,6 +1,7 @@
 """Repositorios de acceso a datos para SQLite con aislamiento estricto por tenant (RN-05)."""
 
 import sqlite3
+from dataclasses import replace
 from src.domain.models import (
     ESTADOS_ACTIVOS,
     Paciente,
@@ -234,15 +235,23 @@ class RepositorioTurnos:
                 "INSERT OR IGNORE INTO tenants (id, nombre) VALUES (?, ?);",
                 (turno.tenant_id, turno.tenant_id),
             )
-            profesional = self._repo_prof.obtener_o_crear(
-                turno.tenant_id, turno.profesional.nombre
+            profesional = (
+                self._repo_prof.obtener_por_id(turno.tenant_id, turno.profesional.id)
+                or self._repo_prof.obtener_o_crear(
+                    turno.tenant_id, turno.profesional.nombre
+                )
             )
-            sillon = self._repo_sillon.obtener_o_crear(
-                turno.tenant_id, turno.sillon.nombre
+            sillon = (
+                self._repo_sillon.obtener_por_id(turno.tenant_id, turno.sillon.id)
+                or self._repo_sillon.obtener_o_crear(
+                    turno.tenant_id, turno.sillon.nombre
+                )
             )
-            paciente = self._repo_pac.obtener_o_crear(
-                turno.tenant_id, turno.paciente
-            )
+            paciente = (
+                self._repo_pac.obtener_por_id(turno.tenant_id, turno.paciente_id)
+                if turno.paciente_id
+                else None
+            ) or self._repo_pac.obtener_o_crear(turno.tenant_id, turno.paciente)
 
             self._conn.execute(
                 """
@@ -268,7 +277,13 @@ class RepositorioTurnos:
                     turno.estado,
                 ),
             )
-        return turno
+        return replace(
+            turno,
+            profesional=profesional,
+            sillon=sillon,
+            paciente=paciente.nombre,
+            paciente_id=paciente.id,
+        )
 
     def actualizar(self, turno: Turno) -> Turno:
         with self._conn:
@@ -312,6 +327,7 @@ class RepositorioTurnos:
             hora_fin=row["hora_fin"],
             paciente=row["pac_nombre"],
             estado=row["estado"],
+            paciente_id=row["pac_id"],
         )
 
     def obtener_por_id(self, tenant_id: str, turno_id: str) -> Turno | None:
@@ -351,9 +367,28 @@ class RepositorioTurnos:
         )
         return [self._fila_a_turno(row) for row in cursor.fetchall()]
 
-    def listar_por_tenant(self, tenant_id: str) -> list[Turno]:
+    def listar_por_tenant(
+        self,
+        tenant_id: str,
+        fecha: str | None = None,
+        profesional_id: str | None = None,
+        sillon_id: str | None = None,
+    ) -> list[Turno]:
+        filtros = ["t.tenant_id = ?"]
+        params: list[str] = [tenant_id]
+        if fecha is not None:
+            filtros.append("t.fecha = ?")
+            params.append(fecha)
+        if profesional_id is not None:
+            filtros.append("t.profesional_id = ?")
+            params.append(profesional_id)
+        if sillon_id is not None:
+            filtros.append("t.sillon_id = ?")
+            params.append(sillon_id)
+
+        where_clause = " AND ".join(filtros)
         cursor = self._conn.execute(
-            """
+            f"""
             SELECT t.id, t.tenant_id, t.fecha, t.hora_inicio, t.hora_fin, t.estado,
                    p.id as prof_id, p.nombre as prof_nombre, p.activo as prof_activo,
                    s.id as sil_id, s.nombre as sil_nombre, s.activo as sil_activo,
@@ -362,8 +397,9 @@ class RepositorioTurnos:
             JOIN profesionales p ON t.profesional_id = p.id
             JOIN sillones s ON t.sillon_id = s.id
             JOIN pacientes pac ON t.paciente_id = pac.id
-            WHERE t.tenant_id = ?;
+            WHERE {where_clause}
+            ORDER BY t.fecha ASC, t.hora_inicio ASC;
             """,
-            (tenant_id,),
+            tuple(params),
         )
         return [self._fila_a_turno(row) for row in cursor.fetchall()]

@@ -17,6 +17,7 @@ See `_shared/skill-resolver.md` for the full resolution protocol.
 | SQLAlchemy ORM models, Alembic migrations, schema changes, indexes/constraints, query optimization | `sqlalchemy-alembic-expert-best-practices-code-review` | `/home/joaquin/.agents/skills/sqlalchemy-alembic-expert-best-practices-code-review/SKILL.md` |
 | Discovery/fase de investigación previa a la KB: checklist de mercado, competidores, reglas de negocio | `discovery-research` | `/home/joaquin/.agents/skills/discovery-research/SKILL.md` |
 | Scrapear una URL de competidor (problema, features, pricing, posicionamiento) con WebFetch/WebSearch | `web-scraper` | `/home/joaquin/.agents/skills/web-scraper/SKILL.md` |
+| Diseñar, implementar o revisar endpoints FastAPI, esquemas Pydantic, manejo de errores HTTP y pruebas API | `odontologia-api-guard` | `{project}/.agents/skills/odontologia-api-guard/SKILL.md` |
 
 ## Compact Rules
 
@@ -91,6 +92,13 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 ### web-scraper
 - Output en notas markdown con esquema fijo: problema que resuelve, usuarios objetivo, features, pricing, posicionamiento.
 - Usar solo WebFetch/WebSearch (sin API keys ni costos); no crawling masivo ni sitios con JS pesado/anti-bot.
+
+### odontologia-api-guard (Skill Propia del Proyecto)
+- Capa API (`src/api/`) solo valida formato, resuelve `X-Tenant-ID`, delega en `ServicioTurnos` (o repositorios de lectura/catálogo) y serializa respuestas; prohibido importar `sqlite3` o lógica de solapamiento en endpoints.
+- Dominio (`src/domain/`) puro: cero imports de FastAPI, Pydantic, `sqlite3` ni `src.persistence`/`src.infrastructure`/`src.api`.
+- Mapear excepciones de dominio centralizadamente: `SolapamientoProfesionalError` / `SolapamientoSillonError` / `TransicionInvalidaError` → `409`, entidad inexistente o de otro tenant → `404`, error de entrada (`hora_fin <= hora_inicio`) → `422`.
+- Tests de API con `TestClient` contra SQLite real (`tmp_path`), sin mocks y usando únicamente datos sintéticos.
+- Validar siempre ejecutando `python .agents/skills/odontologia-api-guard/scripts/check_api_guards.py` y `pytest -v`.
 
 ## Project Skills (SDD workflow — no compact rules; read SKILL.md at invocation)
 

@@ -5,7 +5,7 @@ import sqlite3
 
 def get_connection(database_url: str = ":memory:") -> sqlite3.Connection:
     """Retorna una conexión a SQLite configurada con PRAGMA foreign_keys y row_factory."""
-    conn = sqlite3.connect(database_url)
+    conn = sqlite3.connect(database_url, timeout=10.0, check_same_thread=False)
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn

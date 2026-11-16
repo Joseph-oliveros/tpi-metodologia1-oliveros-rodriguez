@@ -16,8 +16,7 @@ from src.domain.models import (
     Sillon,
     Turno,
 )
-from src.persistence.database import get_connection, init_db
-from src.persistence.repositories import RepositorioTurnos
+from src.domain.ports import RepositorioTurnosEnMemoria, RepositorioTurnosPort
 
 
 def _horas_a_minutos(hora: str) -> int:
@@ -37,32 +36,25 @@ def _hay_solapamiento(
 
 
 class ServicioTurnos:
-    """Registra turnos validando solapamientos con persistencia SQLite y soporte multi-tenant (D-01, RN-05)."""
+    """Registra turnos validando solapamientos mediante puerto de persistencia multi-tenant (D-01, RN-05)."""
 
-    def __init__(self, repositorio_turnos: RepositorioTurnos | None = None) -> None:
-        self._owned_conn = None
-        if repositorio_turnos is None:
-            conn = get_connection(":memory:")
-            init_db(conn)
-            self._owned_conn = conn
-            self._repo = RepositorioTurnos(conn)
-        else:
-            self._repo = repositorio_turnos
+    def __init__(self, repositorio_turnos: RepositorioTurnosPort | None = None) -> None:
+        self._repo: RepositorioTurnosPort = (
+            repositorio_turnos
+            if repositorio_turnos is not None
+            else RepositorioTurnosEnMemoria()
+        )
 
     def cerrar(self) -> None:
-        """Cierra la conexión a la base de datos si fue creada internamente."""
-        if self._owned_conn is not None:
-            self._owned_conn.close()
-            self._owned_conn = None
-
-    def __del__(self) -> None:
-        self.cerrar()
+        """Conservado por compatibilidad; el ciclo de conexión pertenece a infraestructura."""
+        return None
 
     @property
     def _turnos(self):
-        """Adaptador de compatibilidad hacia atrás que redirige a persistencia SQLite."""
+        """Adaptador de compatibilidad hacia atrás que redirige al puerto de turnos."""
+
         class _TurnosAdapter:
-            def __init__(self, repo: RepositorioTurnos, tenant_id: str = "tenant-default"):
+            def __init__(self, repo: RepositorioTurnosPort, tenant_id: str = "tenant-default"):
                 self._repo = repo
                 self._tenant_id = tenant_id
 
@@ -86,10 +78,13 @@ class ServicioTurnos:
         profesional: Profesional,
         sillon: Sillon,
         tenant_id: str = "tenant-default",
+        paciente_id: str = "",
     ) -> Turno:
         """Crea y registra un turno si no hay solapamiento de profesional ni de sillón en el tenant."""
         inicio = _horas_a_minutos(hora_inicio)
         fin = _horas_a_minutos(hora_fin)
+        if fin <= inicio:
+            raise ValueError("La hora de fin debe ser posterior a la hora de inicio")
 
         turnos_activos = self._repo.buscar_activos_por_fecha(tenant_id, fecha)
         for turno_existente in turnos_activos:
@@ -98,12 +93,20 @@ class ServicioTurnos:
             if not _hay_solapamiento(inicio, fin, existente_inicio, existente_fin):
                 continue
             # Doble validación de recurso: profesional y sillón, de forma independiente.
-            if turno_existente.profesional.nombre == profesional.nombre:
+            mismo_profesional = (
+                turno_existente.profesional.id == profesional.id
+                or turno_existente.profesional.nombre == profesional.nombre
+            )
+            if mismo_profesional:
                 raise SolapamientoProfesionalError(
                     f"El profesional {profesional.nombre} ya tiene un turno "
                     f"el {fecha} de {turno_existente.hora_inicio} a {turno_existente.hora_fin}"
                 )
-            if turno_existente.sillon.nombre == sillon.nombre:
+            mismo_sillon = (
+                turno_existente.sillon.id == sillon.id
+                or turno_existente.sillon.nombre == sillon.nombre
+            )
+            if mismo_sillon:
                 raise SolapamientoSillonError(
                     f"El sillón {sillon.nombre} ya está ocupado "
                     f"el {fecha} de {turno_existente.hora_inicio} a {turno_existente.hora_fin}"
@@ -117,8 +120,28 @@ class ServicioTurnos:
             hora_fin=hora_fin,
             paciente=paciente,
             tenant_id=tenant_id,
+            paciente_id=paciente_id,
         )
         return self._repo.guardar(turno)
+
+    def obtener_turno(self, tenant_id: str, turno_id: str) -> Turno | None:
+        """Obtiene un turno por ID dentro del ámbito estricto del tenant."""
+        return self._repo.obtener_por_id(tenant_id, turno_id)
+
+    def listar_turnos(
+        self,
+        tenant_id: str = "tenant-default",
+        fecha: str | None = None,
+        profesional_id: str | None = None,
+        sillon_id: str | None = None,
+    ) -> list[Turno]:
+        """Lista turnos del tenant aplicando filtros opcionales de agenda."""
+        return self._repo.listar_por_tenant(
+            tenant_id=tenant_id,
+            fecha=fecha,
+            profesional_id=profesional_id,
+            sillon_id=sillon_id,
+        )
 
     def turnos_registrados(self, tenant_id: str = "tenant-default") -> list[Turno]:
         """Devuelve los turnos registrados del tenant especificado."""

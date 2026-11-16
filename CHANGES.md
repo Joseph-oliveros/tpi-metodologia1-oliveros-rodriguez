@@ -21,21 +21,22 @@
 ```
 C-01 cancelacion-y-estados-turno
   └── C-02 persistencia-sqlite
-        └── C-03 capa-api-desacoplada
-              └── C-04 auth-rbac-tenancy              ← cierra el MVP base
-                    ├── C-05 endpoints-turnos
-                    │     └── C-08 reprogramacion-turno
-                    ├── C-06 endpoints-recursos
-                    │     └── C-09 admin-recursos-crud
-                    │           └── C-10 bloqueo-sillon
-                    ├── C-07 gestion-pacientes
-                    │
-                    └── C-11 frontend-shell           (C-05 + C-06 + C-07)
-                          └── C-12 agenda-turnos-ui   (C-08 + C-10)
-                                ├── C-13 agenda-matricial          [segunda etapa]
-                                ├── C-14 notificaciones-whatsapp   [segunda etapa, + C-05]
-                                └── C-15 lista-espera              [segunda etapa, + C-14]
+        └── C-03 capa-api-desacoplada              (incluye endpoints de turnos adelantados desde C-05)
+              └── C-04 catalogo-recursos-pacientes-api (Opción A: adelanta recursos/pacientes de C-06/C-07/C-09)
+                    └── C-05-auth auth-rbac-tenancy    ← protege API con JWT/RBAC y reemplaza X-Tenant-ID
+                          ├── C-08 reprogramacion-turno
+                          ├── C-10 bloqueo-sillon
+                          └── C-11 frontend-shell
+                                └── C-12 agenda-turnos-ui   (C-08 + C-10)
+                                      ├── C-13 agenda-matricial          [segunda etapa]
+                                      ├── C-14 notificaciones-whatsapp   [segunda etapa, + C-03/C-05-auth]
+                                      └── C-15 lista-espera              [segunda etapa, + C-14]
 ```
+
+> **Adaptación del roadmap para entrega TPI (según guía "Cómo adaptar el roadmap al avance alcanzado"):**
+> - Se mantiene intacta la trazabilidad histórica de `2026-10-15-crear-turno-sin-solapamientos`, `C-01` y `C-02`.
+> - **`C-03` (`capa-api-desacoplada`)** resuelve `DP-01` (FastAPI + Swagger UI) y **adelanta los endpoints de agenda de `C-05`** (`POST /api/v1/turnos`, `GET /api/v1/turnos`, `PATCH /api/v1/turnos/{id}/estado`) usando el header `X-Tenant-ID` mientras no exista JWT, para habilitar demostración y pruebas HTTP reales de extremo a extremo.
+> - **`C-04` (`catalogo-recursos-pacientes-api`, Opción A)** sustituye temporalmente el orden de `auth-rbac-tenancy` para exponer antes los endpoints CRUD multi-tenant de profesionales, sillones y pacientes (adelantando `C-06`, `C-07` y parte de `C-09` sin RBAC todavía). `auth-rbac-tenancy` pasa al paso siguiente (`C-05-auth`) para añadir JWT y permisos sin duplicar endpoints ya creados.
 
 ### Paralelismo por fase
 
@@ -79,10 +80,10 @@ GATE 7: C-10 + C-12 ✓                      ← SEGUNDA ETAPA (3 paralelos)
 > Cadena prioritaria definida para el MVP: **cancelación y estados de turnos → persistencia en BD → desacople de backend** (`C-01 → C-02 → C-03`), seguida del acceso y la UI mínima hasta poder operar la agenda.
 
 ```
-C-01 → C-02 → C-03 → C-04 → C-05* → C-11 → C-12
+C-01 → C-02 → C-03 → C-04 → C-05-auth → C-11 → C-12
 ```
 
-\* `C-06` y `C-07` corren en paralelo con `C-05` y también alimentan `C-11`; cualquiera de los tres es válidos en la cadena.
+\* `C-03` y `C-04` adelantan respectivamente los endpoints de turnos (`C-05`) y recursos/pacientes (`C-06`, `C-07`) sobre `X-Tenant-ID`, dejando JWT/RBAC en `C-05-auth`.
 
 ### Plan óptimo con 3 agentes
 
@@ -142,14 +143,20 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 ---
 
 ### [C-03] `capa-api-desacoplada`
-- **Estado**: `[ ]` pendiente
-- **Scope**: Capa de presentación desacoplada del dominio (puertos y adaptadores) — fin del "desacople de backend"
-  - Estructura: `src/api/` (controladores + esquemas), `src/repositories/` (adaptadores), `src/infrastructure/` (config, DB), `src/domain/` intacto (`architecture.md` §9)
-  - App FastAPI mínima (o framework según resolución de `DP-01`): factoría que ensambla controlador → servicio de dominio → repositorio
-  - `GET /api/health` — health check
-  - Mapeo de excepciones de dominio a HTTP: `SolapamientoProfesionalError` / `SolapamientoSillonError` → `409`, `TransicionInvalidaError` → `409`, validación de entrada → `422` (contrato de errores `features.md` §5.2)
-  - Esquemas Pydantic de entrada/salida para turno (ejemplo de `features.md` §5.1); el dominio no importa HTTP ni SQLAlchemy
-  - Tests de integración: cliente HTTP contra el servicio con SQLite en memoria; ninguna regla de solapamiento vive en la capa API
+- **Estado**: `[x]` completado (archivado `2026-11-16-c-03-capa-api-desacoplada`)
+- **Scope**: Capa de presentación FastAPI desacoplada del dominio (puertos y adaptadores) + endpoints operativos de turnos y aplicación de la skill propia `odontologia-api-guard`
+  - **Desacople del dominio**: puerto `RepositorioTurnosPort` (`Protocol`) en `backend/src/domain/ports.py` + adaptador en memoria puro para unit tests; `src/domain/` sin imports de `src.persistence`, `sqlite3` ni `fastapi`
+  - **Capa de infraestructura y API**: `backend/src/infrastructure/` (`config.py`, `db.py`) + `backend/src/api/` (`main.py`, `dependencies.py`, `schemas.py`, `exception_handlers.py`, routers)
+  - **Resolución de decisiones**: `DP-01` → Python + FastAPI + Uvicorn; `RP-01` parcial → validación `hora_fin > hora_inicio` y formatos `YYYY-MM-DD` / `HH:MM`; tenancy temporal vía header `X-Tenant-ID`
+  - **Endpoints expuestos (Swagger UI en `/docs`)**:
+    - `GET /api/health` — health check
+    - `POST /api/v1/turnos` — alta con doble validación delegada al dominio (`RN-01`, `RN-02`, `RN-09`) resolviendo recursos del tenant por ID *(adelantado desde `C-05`)*
+    - `GET /api/v1/turnos` — listado del tenant con filtros `fecha`, `profesional_id`, `sillon_id` *(adelantado desde `C-05`)*
+    - `PATCH /api/v1/turnos/{id}/estado` — `confirmar` / `cancelar` / `completar` (`RN-03`, `RN-04`) *(adelantado desde `C-05`)*
+  - **Mapeo de excepciones a HTTP**: `SolapamientoProfesionalError` / `SolapamientoSillonError` / `TransicionInvalidaError` → `409`, recurso/turno inexistente en tenant → `404`, validación de entrada → `422`
+  - **Skill propia aplicada**: `.agents/skills/odontologia-api-guard/SKILL.md` + verificador estático `check_api_guards.py`
+  - **Exclusiones explícitas**: autenticación JWT/RBAC (diferida a `C-05-auth`) y CRUD de catálogo de profesionales/sillones/pacientes (planificado en `C-04`)
+  - **Tests**: integración HTTP con `TestClient` contra SQLite real (`tmp_path`, sin mocks) cubriendo camino feliz, conflictos `409`, precedencia `RN-09`, contiguos, aislamiento `X-Tenant-ID`, cancelación que libera recursos, `404` y `422`
 - **Dependencias**: `C-02`
 - **Governance**: ALTO
 - **Leer antes**:
@@ -157,21 +164,38 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
   - `knowledge-base/decisions.md` §2 D-02, D-06, D-10, §3 DP-01
   - `knowledge-base/features.md` §5 Endpoints, §5.2 Errores de dominio
   - `AGENTS.md` (reglas duras: doble validación, privacidad, criterio verde)
+  - `.agents/skills/odontologia-api-guard/SKILL.md`
 
 ---
 
-## FASE 1 — Acceso y tenancy
+## FASE 1 — Catálogo API y acceso/tenancy
 
-### [C-04] `auth-rbac-tenancy`
+### [C-04] `catalogo-recursos-pacientes-api` *(Adaptación Opción A — adelanta catálogo antes de auth)*
 - **Estado**: `[ ]` pendiente
-- **Scope**: Autenticación, roles y resolución de tenant desde la sesión
+- **Scope**: Endpoints REST multi-tenant para alta y consulta de Profesionales, Sillones y Pacientes en FastAPI, aplicando la skill `odontologia-api-guard` y reutilizando los repositorios SQLite de `C-02`
+  - **Qué adelanta/reemplaza del roadmap original**: adelanta `C-06` (`endpoints-recursos`), `C-07` (`gestion-pacientes`) y las operaciones de alta de `C-09` (`admin-recursos-crud`) sobre el header `X-Tenant-ID`, dejando la autenticación JWT y permisos por rol para `C-05-auth`
+  - **Endpoints previstos**: `GET`/`POST` `/api/v1/profesionales`, `GET`/`POST` `/api/v1/sillones`, `GET`/`POST` `/api/v1/pacientes` (aislados por `X-Tenant-ID`)
+  - **Exclusiones**: autenticación JWT/RBAC, baja lógica/edición avanzada (`PA-16`) y horarios de atención (`DP-08`)
+  - **Tests**: creación de profesional, sillón y paciente sintéticos desde la API en SQLite real + reserva posterior de turno en Swagger con esos IDs + aislamiento entre tenants
+- **Dependencias**: `C-03`
+- **Governance**: MEDIO
+- **Leer antes**:
+  - `knowledge-base/features.md` §F-04, §F-05, §F-10, §F-11, §5 Endpoints
+  - `knowledge-base/data-models.md` §2.2, §2.3, §2.4
+  - `.agents/skills/odontologia-api-guard/SKILL.md`
+
+---
+
+### [C-05-auth] `auth-rbac-tenancy` *(originalmente C-04)*
+- **Estado**: `[ ]` pendiente
+- **Scope**: Autenticación, roles y resolución de tenant desde la sesión JWT (reemplaza la dependencia temporal `X-Tenant-ID` de `C-03` y `C-04` y añade RBAC sobre los endpoints existentes)
   - Resolver en el proposal las decisiones `DP-04` (auth/sesiones) y `DP-03` (aislamiento multi-tenant)
   - Migración 002: tabla `usuario` con `tenant_id`, `email`, `rol` (`Administrador`, `Recepcionista`, `Profesional`), `profesional_id` opcional
   - `POST /api/v1/auth/login` — JWT con claims `sub`, `tenant_id`, `rol`; `GET /api/v1/auth/me`
-  - Dependency/mediddleware que resuelve el tenant de la sesión e inyecta el contexto en los repositorios (`RN-05`)
+  - Dependency/middleware que resuelve el tenant de la sesión e inyecta el contexto en los repositorios (`RN-05`)
   - RBAC mínimo según matriz de permisos: recepción opera agenda, admin configura recursos, profesional solo consulta agenda propia
   - Tests: login OK, token inválido/expirado, fuga de datos entre tenants bloqueada, permisos por rol
-- **Dependencias**: `C-03`
+- **Dependencias**: `C-04`
 - **Governance**: CRITICO
 - **Leer antes**:
   - `knowledge-base/actors.md` §2 Responsabilidades, §3 Matriz de permisos, §5 Restricciones
@@ -181,57 +205,35 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 
 ---
 
-## FASE 2 — Endpoints de agenda (PRIMER FORK)
+## FASE 2 — Endpoints de agenda (consolidados en C-03 y C-04)
 
-> `C-05`, `C-06` y `C-07` pueden proponerse y ejecutarse en paralelo tras `C-04`.
+> Los endpoints base de turnos (`C-05` original) se adelantaron en `C-03`, y la consulta/alta básica de recursos y pacientes (`C-06`, `C-07`) en `C-04` (Opción A). Al implementar `C-05-auth` se les aplica protección JWT y RBAC.
 
-### [C-05] `endpoints-turnos`
-- **Estado**: `[ ]` pendiente
+### [C-05] `endpoints-turnos` *(Fusionado en C-03 + RBAC en C-05-auth)*
+- **Estado**: `[~]` adelantado en `C-03` (sin JWT/RBAC; la restricción por rol `Profesional` se aplica en `C-05-auth`)
 - **Scope**: API REST completa del módulo Agenda (`F-01`, `F-02`, `F-03`)
-  - `POST /api/v1/turnos` — alta con doble validación delegada al dominio (`RN-01`, `RN-09`), estado inicial `CONFIRMADO`
-  - `GET /api/v1/turnos` — filtros `profesional_id`, `sillon_id`, `fecha`; solo turnos del tenant (`RN-05`); el `Profesional` solo ve los propios
-  - `PATCH /api/v1/turnos/{id}/estado` — confirmar / cancelar / completar según `RN-03`; cancelación libera recursos (`RN-04`)
-  - Tests: camino feliz, conflicto de profesional, conflicto de sillón, contiguos, filtros, transiciones inválidas rechazadas, aislamiento por tenant
-- **Dependencias**: `C-04`
+  - `POST /api/v1/turnos`, `GET /api/v1/turnos`, `PATCH /api/v1/turnos/{id}/estado` ya implementados en `C-03`
+  - Pendiente tras `C-05-auth`: filtro automático para rol `Profesional` y verificación RBAC
+- **Dependencias**: `C-03`, `C-05-auth`
 - **Governance**: MEDIO
-- **Leer antes**:
-  - `knowledge-base/features.md` §F-01, §F-02, §F-03, §5 Endpoints
-  - `knowledge-base/flows.md` §2 Flujo de creación, §3 Flujo de cambio de estado
-  - `knowledge-base/business-rules.md` §RN-01, §RN-03, §RN-09
-  - `knowledge-base/actors.md` §3 Matriz de permisos
 
 ---
 
-### [C-06] `endpoints-recursos`
-- **Estado**: `[ ]` pendiente
+### [C-06] `endpoints-recursos` *(Adelantado en C-04)*
+- **Estado**: `[~]` cubierto en el alcance adaptado de `C-04` (pendiente RBAC tras `C-05-auth`)
 - **Scope**: Consulta de recursos para asignar turnos (`F-04`, `F-05`)
-  - `GET /api/v1/profesionales` — lista del tenant, con `matricula`, `especialidad`, `activo`
-  - `GET /api/v1/sillones` — lista del tenant, con `equipamiento` y `activo`
-  - Seed sintético ampliado (datos ficticios: `Dr. Ejemplo`, `Sillón 1`)
-  - Tests: listados acotados al tenant, inclusión/exclusión de recursos inactivos según decisión de `PA-01` adoptada en el proposal
-- **Dependencias**: `C-04`
+  - `GET /api/v1/profesionales`, `GET /api/v1/sillones`
+- **Dependencias**: `C-03`
 - **Governance**: BAJO
-- **Leer antes**:
-  - `knowledge-base/features.md` §F-04, §F-05, §5 Endpoints
-  - `knowledge-base/data-models.md` §2.2 Profesional, §2.3 Sillón
-  - `knowledge-base/business-rules.md` §RN-05
 
 ---
 
-### [C-07] `gestion-pacientes`
-- **Estado**: `[ ]` pendiente
+### [C-07] `gestion-pacientes` *(Adelantado en C-04)*
+- **Estado**: `[~]` cubierto en el alcance adaptado de `C-04` (pendiente RBAC tras `C-05-auth`)
 - **Scope**: Alta y consulta de pacientes (`F-11`)
-  - Definir contrato (figura como "pendiente de definición" en `features.md` §5): `POST /api/v1/pacientes`, `GET /api/v1/pacientes` con filtro `dni` o `nombre`
-  - Campos: `dni`, `nombre`, `telefono`, `tenant_id` (`data-models.md` §2.4); validación de datos mínimos
-  - Alta de paciente habilitada solo para roles autorizados según `actors.md` §7 (resolver en el proposal quién gestiona pacientes)
-  - Tests: alta → asociación a un turno del mismo tenant, listado filtrado, aislamiento por tenant, solo datos sintéticos (`RN-06`)
-- **Dependencias**: `C-04`
+  - `POST /api/v1/pacientes`, `GET /api/v1/pacientes`
+- **Dependencias**: `C-03`
 - **Governance**: BAJO
-- **Leer antes**:
-  - `knowledge-base/features.md` §F-11, §5 Endpoints
-  - `knowledge-base/data-models.md` §2.4 Paciente
-  - `knowledge-base/actors.md` §3 Matriz de permisos, §7 Permisos pendientes
-  - `knowledge-base/open-questions.md` PA-05
 
 ---
 
@@ -382,11 +384,11 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 
 Orden de ejecución planificado (pendiente):
 
-1. `C-01` **cancelacion-y-estados-turno** ← primer change
-2. `C-02` **persistencia-sqlite**
-3. `C-03` **capa-api-desacoplada**
-4. `C-04` auth-rbac-tenancy
-5. `C-05` endpoints-turnos · `C-06` endpoints-recursos · `C-07` gestion-pacientes (paralelo)
+1. `C-01` **cancelacion-y-estados-turno** ✔ (archivado)
+2. `C-02` **persistencia-sqlite** ✔ (archivado)
+3. `C-03` **capa-api-desacoplada** ✔ (archivado — incluye endpoints de turnos + skill `odontologia-api-guard`)
+4. `C-04` **catalogo-recursos-pacientes-api** ← siguiente *(Opción A: CRUD multi-tenant de profesionales, sillones y pacientes)*
+5. `C-05-auth` auth-rbac-tenancy *(incorpora JWT/RBAC sobre los endpoints creados en C-03 y C-04)*
 6. `C-08` reprogramacion-turno · `C-09` admin-recursos-crud · `C-11` frontend-shell
 7. `C-10` bloqueo-sillon · `C-12` agenda-turnos-ui — **cierre del MVP**
 
@@ -412,22 +414,21 @@ Orden de ejecución planificado (pendiente):
 
 | ID | Change | FASE | Dependencias | Governance | Estado |
 |----|--------|------|--------------|------------|--------|
-| C-01 | cancelacion-y-estados-turno | 0 · Núcleo del dominio | ninguna | MEDIO | `[ ]` |
-| C-02 | persistencia-sqlite | 0 · Núcleo del dominio | C-01 | CRITICO | `[ ]` |
-| C-03 | capa-api-desacoplada | 0 · Núcleo del dominio | C-02 | ALTO | `[ ]` |
-| C-04 | auth-rbac-tenancy | 1 · Acceso y tenancy | C-03 | CRITICO | `[ ]` |
-| C-05 | endpoints-turnos | 2 · Endpoints de agenda | C-04 | MEDIO | `[ ]` |
-| C-06 | endpoints-recursos | 2 · Endpoints de agenda | C-04 | BAJO | `[ ]` |
-| C-07 | gestion-pacientes | 2 · Endpoints de agenda | C-04 | BAJO | `[ ]` |
-| C-08 | reprogramacion-turno | 3 · Operación de la agenda | C-05 | MEDIO | `[ ]` |
-| C-09 | admin-recursos-crud | 3 · Operación de la agenda | C-06 | BAJO | `[ ]` |
+| C-01 | cancelacion-y-estados-turno | 0 · Núcleo del dominio | ninguna | MEDIO | `[x]` |
+| C-02 | persistencia-sqlite | 0 · Núcleo del dominio | C-01 | CRITICO | `[x]` |
+| C-03 | capa-api-desacoplada | 0 · Núcleo del dominio | C-02 | ALTO | `[x]` |
+| C-04 | catalogo-recursos-pacientes-api *(Opción A)* | 1 · Catálogo API | C-03 | MEDIO | `[ ]` |
+| C-05-auth | auth-rbac-tenancy | 1 · Acceso y tenancy | C-04 | CRITICO | `[ ]` |
+| C-05 | endpoints-turnos *(adelantado en C-03)* | 2 · Endpoints de agenda | C-03 | MEDIO | `[~]` *(RBAC en C-05-auth)* |
+| C-06 | endpoints-recursos *(adelantado en C-04)* | 2 · Endpoints de agenda | C-03 | BAJO | `[~]` *(RBAC en C-05-auth)* |
+| C-07 | gestion-pacientes *(adelantado en C-04)* | 2 · Endpoints de agenda | C-03 | BAJO | `[~]` *(RBAC en C-05-auth)* |
+| C-08 | reprogramacion-turno | 3 · Operación de la agenda | C-03, C-05-auth | MEDIO | `[ ]` |
+| C-09 | admin-recursos-crud | 3 · Operación de la agenda | C-04, C-05-auth | BAJO | `[ ]` |
 | C-10 | bloqueo-sillon | 3 · Operación de la agenda | C-09 | ALTO | `[ ]` |
-| C-11 | frontend-shell | 4 · Frontend web | C-05, C-06, C-07 | BAJO | `[ ]` |
+| C-11 | frontend-shell | 4 · Frontend web | C-04, C-05-auth | BAJO | `[ ]` |
 | C-12 | agenda-turnos-ui | 4 · Frontend web | C-11 | MEDIO | `[ ]` |
 | C-13 | agenda-matricial | 5 · Segunda etapa | C-12 | MEDIO | `[ ]` |
-| C-14 | notificaciones-whatsapp | 5 · Segunda etapa | C-05 | ALTO | `[ ]` |
+| C-14 | notificaciones-whatsapp | 5 · Segunda etapa | C-03, C-05-auth | ALTO | `[ ]` |
 | C-15 | lista-espera | 5 · Segunda etapa | C-14 | MEDIO | `[ ]` |
 
-**Primer change recomendado**: `C-01` (`cancelacion-y-estados-turno`) — inicia el camino crítico MVP con la máquina de estados y la liberación de recursos por cancelación.
-
-Para arrancar: `/opsx:propose C-01-cancelacion-y-estados-turno`
+**Siguiente change recomendado**: `C-04` (`catalogo-recursos-pacientes-api`, Opción A) — para exponer los endpoints CRUD multi-tenant de profesionales, sillones y pacientes sobre la API desacoplada y completar 4 changes relevantes post-fundación.

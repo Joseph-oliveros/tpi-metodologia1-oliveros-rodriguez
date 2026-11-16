@@ -10,7 +10,7 @@
 | Capa | Tecnología | Versión | Estado |
 |------|------------|---------|--------|
 | Lenguaje del núcleo | Python (type hints, PEP 8) | 3.11+ | Definido (D-03) |
-| Backend / API | FastAPI (candidato) — Python/FastAPI vs. Node.js | — | **Pendiente (DP-01)** |
+| Backend / API | FastAPI / Pydantic v2 / Uvicorn | 0.162.0 | Definido (`DP-01` resuelto en `C-03`) |
 | Desarrollo y pruebas | SQLite | — | Definido (D-04) |
 | Producción / ORM / migraciones | Por definir | — | **Pendiente (DP-02)** |
 | Frontend | Web-first (framework por definir) | — | Fases 4-5 del roadmap |
@@ -47,7 +47,7 @@ La fuente de verdad del dominio vive en `knowledge-base/`. **Leé el archivo rel
 
 | Agente | Rol | Skills que carga |
 |--------|-----|------------------|
-| **Backend Core** | Dominio, API, persistencia | `fastapi`, `python-testing-patterns`, `clean-architecture`, `domain-driven-design`, `sqlalchemy-alembic-expert-best-practices-code-review` |
+| **Backend Core** | Dominio, API, persistencia | `fastapi`, `python-testing-patterns`, `clean-architecture`, `domain-driven-design`, `sqlalchemy-alembic-expert-best-practices-code-review`, `odontologia-api-guard` (`.agents/skills/odontologia-api-guard/SKILL.md`) |
 | **Orquestación** | SDD / OPSX / discovery | `discovery-research`, `web-scraper` + skills OpenSpec (`openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, …) |
 
 Cargá la skill correspondiente al contexto ANTES de escribir código.
@@ -61,9 +61,9 @@ Cargá la skill correspondiente al contexto ANTES de escribir código.
 El plan de implementación completo está en [CHANGES.md](CHANGES.md). Resumen:
 
 - **Total**: 15 changes en 6 fases (FASE 0-4 = MVP, FASE 5 = segunda etapa).
-- **Camino crítico MVP** (7): `C-01 cancelacion-y-estados-turno → C-02 persistencia-sqlite → C-03 capa-api-desacoplada → C-04 auth-rbac-tenancy → C-05 endpoints-turnos → C-11 frontend-shell → C-12 agenda-turnos-ui`.
-- **Completados**: `2026-10-15-crear-turno-sin-solapamientos` ✔, `2026-11-15-c-01-cancelacion-y-estados-turno` ✔, `2026-11-15-c-02-persistencia-sqlite` ✔.
-- **Siguiente change**: `C-03` (`capa-api-desacoplada`).
+- **Camino crítico MVP** (adaptado TPI): `C-01 cancelacion-y-estados-turno → C-02 persistencia-sqlite → C-03 capa-api-desacoplada → C-04 catalogo-recursos-pacientes-api → C-05-auth auth-rbac-tenancy → C-11 frontend-shell → C-12 agenda-turnos-ui`.
+- **Completados**: `2026-10-15-crear-turno-sin-solapamientos` ✔, `2026-11-15-c-01-cancelacion-y-estados-turno` ✔, `2026-11-15-c-02-persistencia-sqlite` ✔, `2026-11-16-c-03-capa-api-desacoplada` ✔.
+- **Siguiente change**: `C-04` (`catalogo-recursos-pacientes-api` — Opción A).
 
 **Antes de cualquier `/opsx:propose`**: leé [CHANGES.md](CHANGES.md), identificá las dependencias del change y los archivos de "Leer antes".
 

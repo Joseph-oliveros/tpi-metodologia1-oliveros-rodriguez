@@ -78,3 +78,4 @@ class Turno:
     estado: str = "CONFIRMADO"
     id: str = field(default_factory=_generar_id, compare=False)
     tenant_id: str = "tenant-default"
+    paciente_id: str = field(default="", compare=False)
