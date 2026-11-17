@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from src.domain.exceptions import (
+    RecursoDuplicadoError,
     SolapamientoProfesionalError,
     SolapamientoSillonError,
     TransicionInvalidaError,
@@ -12,11 +13,18 @@ from src.domain.models import (
     ESTADO_COMPLETADO,
     ESTADO_CONFIRMADO,
     TRANSICIONES_PERMITIDAS,
+    Paciente,
     Profesional,
     Sillon,
     Turno,
 )
-from src.domain.ports import RepositorioTurnosEnMemoria, RepositorioTurnosPort
+from src.domain.ports import (
+    RepositorioPacientesPort,
+    RepositorioProfesionalesPort,
+    RepositorioSillonesPort,
+    RepositorioTurnosEnMemoria,
+    RepositorioTurnosPort,
+)
 
 
 def _horas_a_minutos(hora: str) -> int:
@@ -171,3 +179,163 @@ class ServicioTurnos:
     def completar(self, turno: Turno) -> Turno:
         """Marca como completado un turno en estado CONFIRMADO."""
         return self._transicionar(turno, ESTADO_COMPLETADO)
+
+
+class ServicioCatalogo:
+    """Gestiona alta y consulta multi-tenant de profesionales, sillones y pacientes."""
+
+    def __init__(
+        self,
+        repo_profesionales: RepositorioProfesionalesPort,
+        repo_sillones: RepositorioSillonesPort,
+        repo_pacientes: RepositorioPacientesPort,
+    ) -> None:
+        self._repo_profs = repo_profesionales
+        self._repo_sillones = repo_sillones
+        self._repo_pacientes = repo_pacientes
+
+    def crear_profesional(
+        self,
+        tenant_id: str,
+        nombre: str,
+        matricula: str = "",
+        especialidad: str = "",
+        activo: bool = True,
+    ) -> Profesional:
+        """Registra un profesional validando unicidad de matrícula y nombre en el tenant."""
+        nombre_limpio = nombre.strip()
+        if not nombre_limpio:
+            raise ValueError("El nombre del profesional no puede estar vacío")
+        matricula_limpia = matricula.strip()
+        especialidad_limpia = especialidad.strip()
+
+        existentes = self._repo_profs.listar_por_tenant(tenant_id)
+        for existente in existentes:
+            if (
+                matricula_limpia
+                and existente.matricula.strip().lower() == matricula_limpia.lower()
+            ):
+                raise RecursoDuplicadoError(
+                    "profesional",
+                    f"Ya existe un profesional con matrícula '{matricula_limpia}' en el tenant",
+                )
+            if existente.nombre.strip().lower() == nombre_limpio.lower():
+                raise RecursoDuplicadoError(
+                    "profesional",
+                    f"Ya existe un profesional llamado '{nombre_limpio}' en el tenant",
+                )
+
+        return self._repo_profs.guardar(
+            Profesional(
+                nombre=nombre_limpio,
+                tenant_id=tenant_id,
+                activo=activo,
+                matricula=matricula_limpia,
+                especialidad=especialidad_limpia,
+            )
+        )
+
+    def listar_profesionales(
+        self, tenant_id: str, solo_activos: bool | None = None
+    ) -> list[Profesional]:
+        """Lista los profesionales del tenant con filtro opcional por estado activo."""
+        return self._repo_profs.listar_por_tenant(
+            tenant_id=tenant_id, solo_activos=solo_activos
+        )
+
+    def obtener_profesional(
+        self, tenant_id: str, profesional_id: str
+    ) -> Profesional | None:
+        """Obtiene un profesional por ID dentro del tenant."""
+        return self._repo_profs.obtener_por_id(tenant_id, profesional_id)
+
+    def crear_sillon(
+        self,
+        tenant_id: str,
+        nombre: str,
+        equipamiento: str = "",
+        activo: bool = True,
+    ) -> Sillon:
+        """Registra un sillón/box validando unicidad de nombre en el tenant."""
+        nombre_limpio = nombre.strip()
+        if not nombre_limpio:
+            raise ValueError("El nombre del sillón no puede estar vacío")
+        equipamiento_limpio = equipamiento.strip()
+
+        for existente in self._repo_sillones.listar_por_tenant(tenant_id):
+            if existente.nombre.strip().lower() == nombre_limpio.lower():
+                raise RecursoDuplicadoError(
+                    "sillon",
+                    f"Ya existe un sillón llamado '{nombre_limpio}' en el tenant",
+                )
+
+        return self._repo_sillones.guardar(
+            Sillon(
+                nombre=nombre_limpio,
+                tenant_id=tenant_id,
+                activo=activo,
+                equipamiento=equipamiento_limpio,
+            )
+        )
+
+    def listar_sillones(
+        self, tenant_id: str, solo_activos: bool | None = None
+    ) -> list[Sillon]:
+        """Lista los sillones del tenant con filtro opcional por estado activo."""
+        return self._repo_sillones.listar_por_tenant(
+            tenant_id=tenant_id, solo_activos=solo_activos
+        )
+
+    def obtener_sillon(self, tenant_id: str, sillon_id: str) -> Sillon | None:
+        """Obtiene un sillón por ID dentro del tenant."""
+        return self._repo_sillones.obtener_por_id(tenant_id, sillon_id)
+
+    def crear_paciente(
+        self,
+        tenant_id: str,
+        nombre: str,
+        dni: str = "",
+        telefono: str = "",
+    ) -> Paciente:
+        """Registra un paciente validando unicidad de DNI no vacío dentro del tenant."""
+        nombre_limpio = nombre.strip()
+        if not nombre_limpio:
+            raise ValueError("El nombre del paciente no puede estar vacío")
+        dni_limpio = dni.strip()
+        telefono_limpio = telefono.strip()
+
+        if dni_limpio:
+            for existente in self._repo_pacientes.listar_por_tenant(
+                tenant_id, dni=dni_limpio
+            ):
+                if existente.dni.strip().lower() == dni_limpio.lower():
+                    raise RecursoDuplicadoError(
+                        "paciente",
+                        f"Ya existe un paciente con DNI '{dni_limpio}' en el tenant",
+                    )
+
+        return self._repo_pacientes.guardar(
+            Paciente(
+                nombre=nombre_limpio,
+                dni=dni_limpio,
+                tenant_id=tenant_id,
+                telefono=telefono_limpio,
+            )
+        )
+
+    def listar_pacientes(
+        self,
+        tenant_id: str,
+        dni: str | None = None,
+        nombre: str | None = None,
+    ) -> list[Paciente]:
+        """Lista los pacientes del tenant filtrando opcionalmente por DNI o nombre."""
+        return self._repo_pacientes.listar_por_tenant(
+            tenant_id=tenant_id,
+            dni=dni.strip() if dni is not None else None,
+            nombre=nombre.strip() if nombre is not None else None,
+        )
+
+    def obtener_paciente(self, tenant_id: str, paciente_id: str) -> Paciente | None:
+        """Obtiene un paciente por ID dentro del tenant."""
+        return self._repo_pacientes.obtener_por_id(tenant_id, paciente_id)

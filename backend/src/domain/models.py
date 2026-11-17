@@ -43,6 +43,7 @@ class Paciente:
     dni: str = ""
     id: str = field(default_factory=_generar_id, compare=False)
     tenant_id: str = "tenant-default"
+    telefono: str = ""
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,8 @@ class Profesional:
     id: str = field(default_factory=_generar_id, compare=False)
     tenant_id: str = "tenant-default"
     activo: bool = True
+    matricula: str = ""
+    especialidad: str = ""
 
 
 @dataclass(frozen=True)
@@ -63,6 +66,7 @@ class Sillon:
     id: str = field(default_factory=_generar_id, compare=False)
     tenant_id: str = "tenant-default"
     activo: bool = True
+    equipamiento: str = ""
 
 
 @dataclass(frozen=True)

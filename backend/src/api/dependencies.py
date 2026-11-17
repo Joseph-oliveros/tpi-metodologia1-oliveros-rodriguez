@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
-from src.domain.services import ServicioTurnos
+from src.domain.services import ServicioCatalogo, ServicioTurnos
 from src.infrastructure.db import crear_repositorios, db_session
 from src.persistence.repositories import (
     RepositorioPacientes,
@@ -82,5 +82,17 @@ def obtener_contexto_turnos(
         )
 
 
+def obtener_servicio_catalogo(
+    ctx: Annotated[ContextoTurnos, Depends(obtener_contexto_turnos)],
+) -> ServicioCatalogo:
+    """Ensambla el servicio de dominio de catálogo reutilizando la sesión de la petición."""
+    return ServicioCatalogo(
+        repo_profesionales=ctx.repo_profs,
+        repo_sillones=ctx.repo_sillones,
+        repo_pacientes=ctx.repo_pacientes,
+    )
+
+
 TenantIdDep = Annotated[str, Depends(obtener_tenant_id)]
 ContextoTurnosDep = Annotated[ContextoTurnos, Depends(obtener_contexto_turnos)]
+ServicioCatalogoDep = Annotated[ServicioCatalogo, Depends(obtener_servicio_catalogo)]

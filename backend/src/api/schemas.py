@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from src.domain.models import Turno
+from src.domain.models import Paciente, Profesional, Sillon, Turno
 
 AccionEstadoTurno = Literal["confirmar", "cancelar", "completar"]
 
@@ -98,4 +98,128 @@ class TurnoResponse(BaseModel):
             hora_inicio=turno.hora_inicio,
             hora_fin=turno.hora_fin,
             estado=turno.estado,
+        )
+
+
+def _limpiar_requerido(value: str) -> str:
+    limpio = value.strip()
+    if not limpio:
+        raise ValueError("El campo no puede estar vacío")
+    return limpio
+
+
+class ProfesionalCreateRequest(BaseModel):
+    """Solicitud HTTP para dar de alta un profesional en el tenant."""
+
+    nombre: str = Field(min_length=1, examples=["Dr. Ejemplo"])
+    matricula: str = Field(default="", examples=["MP-1001"])
+    especialidad: str = Field(default="", examples=["Odontología General"])
+    activo: bool = Field(default=True, examples=[True])
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre_no_vacio(cls, value: str) -> str:
+        return _limpiar_requerido(value)
+
+    @field_validator("matricula", "especialidad")
+    @classmethod
+    def limpiar_opcionales(cls, value: str) -> str:
+        return value.strip()
+
+
+class ProfesionalResponse(BaseModel):
+    """Representación HTTP pública de un profesional."""
+
+    id: str = Field(examples=["prof-1"])
+    tenant_id: str = Field(examples=["demo-tenant"])
+    nombre: str = Field(examples=["Dr. Ejemplo"])
+    matricula: str = Field(examples=["MP-1001"])
+    especialidad: str = Field(examples=["Odontología General"])
+    activo: bool = Field(examples=[True])
+
+    @classmethod
+    def from_domain(cls, profesional: Profesional) -> ProfesionalResponse:
+        return cls(
+            id=profesional.id,
+            tenant_id=profesional.tenant_id,
+            nombre=profesional.nombre,
+            matricula=profesional.matricula,
+            especialidad=profesional.especialidad,
+            activo=profesional.activo,
+        )
+
+
+class SillonCreateRequest(BaseModel):
+    """Solicitud HTTP para dar de alta un sillón/box en el tenant."""
+
+    nombre: str = Field(min_length=1, examples=["Sillón 1"])
+    equipamiento: str = Field(default="", examples=["Unidad dental estándar"])
+    activo: bool = Field(default=True, examples=[True])
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre_no_vacio(cls, value: str) -> str:
+        return _limpiar_requerido(value)
+
+    @field_validator("equipamiento")
+    @classmethod
+    def limpiar_equipamiento(cls, value: str) -> str:
+        return value.strip()
+
+
+class SillonResponse(BaseModel):
+    """Representación HTTP pública de un sillón/box."""
+
+    id: str = Field(examples=["sil-1"])
+    tenant_id: str = Field(examples=["demo-tenant"])
+    nombre: str = Field(examples=["Sillón 1"])
+    equipamiento: str = Field(examples=["Unidad dental estándar"])
+    activo: bool = Field(examples=[True])
+
+    @classmethod
+    def from_domain(cls, sillon: Sillon) -> SillonResponse:
+        return cls(
+            id=sillon.id,
+            tenant_id=sillon.tenant_id,
+            nombre=sillon.nombre,
+            equipamiento=sillon.equipamiento,
+            activo=sillon.activo,
+        )
+
+
+class PacienteCreateRequest(BaseModel):
+    """Solicitud HTTP para dar de alta un paciente sintético en el tenant."""
+
+    nombre: str = Field(min_length=1, examples=["Paciente Ficticio"])
+    dni: str = Field(default="", examples=["99887766"])
+    telefono: str = Field(default="", examples=["11-0000-0001"])
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre_no_vacio(cls, value: str) -> str:
+        return _limpiar_requerido(value)
+
+    @field_validator("dni", "telefono")
+    @classmethod
+    def limpiar_opcionales(cls, value: str) -> str:
+        return value.strip()
+
+
+class PacienteResponse(BaseModel):
+    """Representación HTTP pública de un paciente."""
+
+    id: str = Field(examples=["pac-1"])
+    tenant_id: str = Field(examples=["demo-tenant"])
+    nombre: str = Field(examples=["Paciente Ficticio"])
+    dni: str = Field(examples=["99887766"])
+    telefono: str = Field(examples=["11-0000-0001"])
+
+    @classmethod
+    def from_domain(cls, paciente: Paciente) -> PacienteResponse:
+        return cls(
+            id=paciente.id,
+            tenant_id=paciente.tenant_id,
+            nombre=paciente.nombre,
+            dni=paciente.dni,
+            telefono=paciente.telefono,
         )

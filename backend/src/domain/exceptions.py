@@ -20,3 +20,11 @@ class TransicionInvalidaError(Exception):
 
     def __init__(self, mensaje: str = "Transición de estado no permitida") -> None:
         super().__init__(mensaje)
+
+
+class RecursoDuplicadoError(Exception):
+    """Ya existe un profesional, sillón o paciente con los mismos datos únicos en el tenant."""
+
+    def __init__(self, recurso: str, mensaje: str) -> None:
+        self.recurso = recurso
+        super().__init__(mensaje)

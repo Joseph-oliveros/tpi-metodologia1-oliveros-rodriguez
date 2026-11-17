@@ -42,7 +42,7 @@ El alcance planificado para la entrega del TPI supera el mínimo exigido de 4 ch
 | **2** | `C-01` | `cancelacion-y-estados-turno`: Ciclo de vida y máquina de estados del turno (confirmar, cancelar, completar) y reglas de liberación de recursos por cancelación (`RN-03`, `RN-04`). | **Archivado** ✔ |
 | **3** | `C-02` | `persistencia-sqlite`: Capa de persistencia con base de datos SQLite real para tests y desarrollo (sin mockear la BD), repositorios y mapeo de entidades de dominio. | **Archivado** ✔ |
 | **4** | `C-03` | `capa-api-desacoplada`: Exposición de endpoints HTTP mediante **FastAPI** (`/api/health`, `/api/v1/turnos`) con documentación interactiva **Swagger/OpenAPI**, desacoplada del dominio puro y validada con la skill `odontologia-api-guard`. | **Archivado** ✔ |
-| **5** | `C-04` | `catalogo-recursos-pacientes-api` *(Opción A)*: Endpoints CRUD multi-tenant para Profesionales, Sillones y Pacientes sobre FastAPI reutilizando los repositorios SQLite de `C-02`. | *Planificado* |
+| **5** | `C-04` | `catalogo-recursos-pacientes-api` *(Opción A)*: Endpoints CRUD multi-tenant para Profesionales, Sillones y Pacientes sobre FastAPI reutilizando los repositorios SQLite de `C-02` y aplicando `odontologia-api-guard`. | **Archivado** ✔ |
 
 ---
 
@@ -54,7 +54,7 @@ El alcance planificado para la entrega del TPI supera el mínimo exigido de 4 ch
   - [x] 2. `C-01 cancelacion-y-estados-turno` (Archivado en `openspec/changes/archive/2026-11-15-c-01-cancelacion-y-estados-turno/`)
   - [x] 3. `C-02 persistencia-sqlite` (Archivado en `openspec/changes/archive/2026-11-15-c-02-persistencia-sqlite/`)
   - [x] 4. `C-03 capa-api-desacoplada` (Archivado en `openspec/changes/archive/2026-11-16-c-03-capa-api-desacoplada/`)
-  - [ ] 5. `C-04 catalogo-recursos-pacientes-api` *(Opción A planificada como refuerzo adicional)*
+  - [x] 5. `C-04 catalogo-recursos-pacientes-api` (Archivado en `openspec/changes/archive/2026-11-17-c-04-catalogo-recursos-pacientes-api/`)
 - [x] **Ciclo SDD riguroso:** Propose $\to$ Apply $\to$ Pytest verde $\to$ Archive.
 - [x] **Skill propia** creada y documentada (`.agents/skills/odontologia-api-guard/`).
 - [x] **Servidor MCP** configurado e integrado (`sqlite-turnos` documentado y validado con `seed.py` en `C-02`).

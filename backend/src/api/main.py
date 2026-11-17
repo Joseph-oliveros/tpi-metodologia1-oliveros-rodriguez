@@ -6,6 +6,9 @@ from fastapi import FastAPI
 
 from src.api.exception_handlers import register_exception_handlers
 from src.api.routers.health import router as health_router
+from src.api.routers.pacientes import router as pacientes_router
+from src.api.routers.profesionales import router as profesionales_router
+from src.api.routers.sillones import router as sillones_router
 from src.api.routers.turnos import router as turnos_router
 from src.infrastructure.config import get_settings
 from src.infrastructure.db import init_database
@@ -32,6 +35,9 @@ def create_app(database_path: str | None = None) -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(health_router)
+    app.include_router(profesionales_router)
+    app.include_router(sillones_router)
+    app.include_router(pacientes_router)
     app.include_router(turnos_router)
     return app
 

@@ -17,6 +17,7 @@ Referencia normativa para la capa `backend/src/api/` alineada con `knowledge-bas
 | `SolapamientoProfesionalError` | `409 Conflict` | `SOLAPAMIENTO_PROFESIONAL` | `"profesional"` | `RN-01`, `RN-09` |
 | `SolapamientoSillonError` | `409 Conflict` | `SOLAPAMIENTO_SILLON` | `"sillon"` | `RN-01` |
 | `TransicionInvalidaError` | `409 Conflict` | `TRANSICION_INVALIDA` | `null` | `RN-03` |
+| `RecursoDuplicadoError` | `409 Conflict` | `RECURSO_DUPLICADO` | nombre recurso | `RN-05` |
 | Entidad/turno inexistente o de otro tenant | `404 Not Found` | `RECURSO_NO_ENCONTRADO` | nombre recurso | `RN-05` |
 | Error de formato o `hora_fin <= hora_inicio` | `422 Unprocessable Entity` | estándar FastAPI/Pydantic | `null` | `RP-01` |
 

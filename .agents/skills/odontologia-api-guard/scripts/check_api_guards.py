@@ -84,15 +84,15 @@ def check_api_decoupling() -> list[str]:
 
 def check_tests_no_db_mocks() -> list[str]:
     errors: list[str] = []
-    api_test_file = TESTS_DIR / "test_api.py"
-    if not api_test_file.exists():
+    if not TESTS_DIR.exists():
         return []
-    content = api_test_file.read_text(encoding="utf-8")
-    for pattern in FORBIDDEN_TEST_PATTERNS:
-        if pattern in content:
-            errors.append(
-                f"[REAL SQLITE GUARD] {api_test_file.relative_to(ROOT)} contiene '{pattern}' (prohibido mockear BD/servicios)"
-            )
+    for test_file in sorted(TESTS_DIR.glob("test_*.py")):
+        content = test_file.read_text(encoding="utf-8")
+        for pattern in FORBIDDEN_TEST_PATTERNS:
+            if pattern in content:
+                errors.append(
+                    f"[REAL SQLITE GUARD] {test_file.relative_to(ROOT)} contiene '{pattern}' (prohibido mockear BD/servicios)"
+                )
     return errors
 
 

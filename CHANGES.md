@@ -171,7 +171,7 @@ Paso │ Agente A (Backend Core)        │ Agente B (Backend Aux)      │ Agen
 ## FASE 1 — Catálogo API y acceso/tenancy
 
 ### [C-04] `catalogo-recursos-pacientes-api` *(Adaptación Opción A — adelanta catálogo antes de auth)*
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-11-17-c-04-catalogo-recursos-pacientes-api`)
 - **Scope**: Endpoints REST multi-tenant para alta y consulta de Profesionales, Sillones y Pacientes en FastAPI, aplicando la skill `odontologia-api-guard` y reutilizando los repositorios SQLite de `C-02`
   - **Qué adelanta/reemplaza del roadmap original**: adelanta `C-06` (`endpoints-recursos`), `C-07` (`gestion-pacientes`) y las operaciones de alta de `C-09` (`admin-recursos-crud`) sobre el header `X-Tenant-ID`, dejando la autenticación JWT y permisos por rol para `C-05-auth`
   - **Endpoints previstos**: `GET`/`POST` `/api/v1/profesionales`, `GET`/`POST` `/api/v1/sillones`, `GET`/`POST` `/api/v1/pacientes` (aislados por `X-Tenant-ID`)
@@ -387,8 +387,8 @@ Orden de ejecución planificado (pendiente):
 1. `C-01` **cancelacion-y-estados-turno** ✔ (archivado)
 2. `C-02` **persistencia-sqlite** ✔ (archivado)
 3. `C-03` **capa-api-desacoplada** ✔ (archivado — incluye endpoints de turnos + skill `odontologia-api-guard`)
-4. `C-04` **catalogo-recursos-pacientes-api** ← siguiente *(Opción A: CRUD multi-tenant de profesionales, sillones y pacientes)*
-5. `C-05-auth` auth-rbac-tenancy *(incorpora JWT/RBAC sobre los endpoints creados en C-03 y C-04)*
+4. `C-04` **catalogo-recursos-pacientes-api** ✔ (archivado — Opción A: CRUD multi-tenant de profesionales, sillones y pacientes)
+5. `C-05-auth` auth-rbac-tenancy ← siguiente *(incorpora JWT/RBAC sobre los endpoints creados en C-03 y C-04)*
 6. `C-08` reprogramacion-turno · `C-09` admin-recursos-crud · `C-11` frontend-shell
 7. `C-10` bloqueo-sillon · `C-12` agenda-turnos-ui — **cierre del MVP**
 
@@ -417,7 +417,7 @@ Orden de ejecución planificado (pendiente):
 | C-01 | cancelacion-y-estados-turno | 0 · Núcleo del dominio | ninguna | MEDIO | `[x]` |
 | C-02 | persistencia-sqlite | 0 · Núcleo del dominio | C-01 | CRITICO | `[x]` |
 | C-03 | capa-api-desacoplada | 0 · Núcleo del dominio | C-02 | ALTO | `[x]` |
-| C-04 | catalogo-recursos-pacientes-api *(Opción A)* | 1 · Catálogo API | C-03 | MEDIO | `[ ]` |
+| C-04 | catalogo-recursos-pacientes-api *(Opción A)* | 1 · Catálogo API | C-03 | MEDIO | `[x]` |
 | C-05-auth | auth-rbac-tenancy | 1 · Acceso y tenancy | C-04 | CRITICO | `[ ]` |
 | C-05 | endpoints-turnos *(adelantado en C-03)* | 2 · Endpoints de agenda | C-03 | MEDIO | `[~]` *(RBAC en C-05-auth)* |
 | C-06 | endpoints-recursos *(adelantado en C-04)* | 2 · Endpoints de agenda | C-03 | BAJO | `[~]` *(RBAC en C-05-auth)* |
@@ -431,4 +431,4 @@ Orden de ejecución planificado (pendiente):
 | C-14 | notificaciones-whatsapp | 5 · Segunda etapa | C-03, C-05-auth | ALTO | `[ ]` |
 | C-15 | lista-espera | 5 · Segunda etapa | C-14 | MEDIO | `[ ]` |
 
-**Siguiente change recomendado**: `C-04` (`catalogo-recursos-pacientes-api`, Opción A) — para exponer los endpoints CRUD multi-tenant de profesionales, sillones y pacientes sobre la API desacoplada y completar 4 changes relevantes post-fundación.
+**Siguiente change recomendado**: `C-05-auth` (`auth-rbac-tenancy`) — para incorporar autenticación JWT, RBAC y reemplazo del header temporal `X-Tenant-ID` sobre los endpoints de `C-03` y `C-04`.

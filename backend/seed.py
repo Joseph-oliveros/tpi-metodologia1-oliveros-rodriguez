@@ -58,19 +58,41 @@ def seed_database(db_path: Path | None = None) -> Path:
 
     # 2. Profesionales sintéticos
     prof_1 = repo_profs.guardar(
-        Profesional(id="prof-1", tenant_id=tenant_id, nombre="Dr. Ejemplo")
+        Profesional(
+            id="prof-1",
+            tenant_id=tenant_id,
+            nombre="Dr. Ejemplo",
+            matricula="MP-1001",
+            especialidad="Odontología General",
+        )
     )
     prof_2 = repo_profs.guardar(
-        Profesional(id="prof-2", tenant_id=tenant_id, nombre="Dra. Prueba")
+        Profesional(
+            id="prof-2",
+            tenant_id=tenant_id,
+            nombre="Dra. Prueba",
+            matricula="MP-1002",
+            especialidad="Ortodoncia",
+        )
     )
     print(f" [✓] Profesionales registrados: {prof_1.nombre}, {prof_2.nombre}")
 
     # 3. Sillones sintéticos
     sillon_1 = repo_sillones.guardar(
-        Sillon(id="sil-1", tenant_id=tenant_id, nombre="Sillón 1")
+        Sillon(
+            id="sil-1",
+            tenant_id=tenant_id,
+            nombre="Sillón 1",
+            equipamiento="Unidad dental estándar",
+        )
     )
     sillon_2 = repo_sillones.guardar(
-        Sillon(id="sil-2", tenant_id=tenant_id, nombre="Sillón 2")
+        Sillon(
+            id="sil-2",
+            tenant_id=tenant_id,
+            nombre="Sillón 2",
+            equipamiento="Unidad dental con RX",
+        )
     )
     print(f" [✓] Sillones registrados: {sillon_1.nombre}, {sillon_2.nombre}")
 
@@ -81,6 +103,7 @@ def seed_database(db_path: Path | None = None) -> Path:
             tenant_id=tenant_id,
             nombre="Paciente Ficticio",
             dni="99887766",
+            telefono="11-0000-0001",
         )
     )
     print(f" [✓] Paciente registrado: {paciente_1.nombre} (DNI: {paciente_1.dni})")

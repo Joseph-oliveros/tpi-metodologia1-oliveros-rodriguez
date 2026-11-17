@@ -1,6 +1,19 @@
-"""Inicialización y gestión de conexiones SQLite para persistencia relacional."""
+"""Inicialización, migración idempotente y gestión de conexiones SQLite."""
 
 import sqlite3
+
+_COLUMNAS_MIGRACION: dict[str, tuple[tuple[str, str], ...]] = {
+    "profesionales": (
+        ("matricula", "TEXT NOT NULL DEFAULT ''"),
+        ("especialidad", "TEXT NOT NULL DEFAULT ''"),
+    ),
+    "sillones": (
+        ("equipamiento", "TEXT NOT NULL DEFAULT ''"),
+    ),
+    "pacientes": (
+        ("telefono", "TEXT NOT NULL DEFAULT ''"),
+    ),
+}
 
 
 def get_connection(database_url: str = ":memory:") -> sqlite3.Connection:
@@ -9,6 +22,16 @@ def get_connection(database_url: str = ":memory:") -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _migrar_columnas_faltantes(conn: sqlite3.Connection) -> None:
+    """Agrega columnas nuevas de forma idempotente en esquemas SQLite preexistentes."""
+    for tabla, columnas in _COLUMNAS_MIGRACION.items():
+        cursor = conn.execute(f"PRAGMA table_info({tabla});")
+        existentes = {fila["name"] for fila in cursor.fetchall()}
+        for col, definicion in columnas:
+            if col not in existentes:
+                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {col} {definicion};")
 
 
 def init_db(conn: sqlite3.Connection) -> None:
@@ -27,6 +50,8 @@ def init_db(conn: sqlite3.Connection) -> None:
                 tenant_id TEXT NOT NULL,
                 nombre TEXT NOT NULL,
                 activo INTEGER NOT NULL DEFAULT 1,
+                matricula TEXT NOT NULL DEFAULT '',
+                especialidad TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
             );
 
@@ -35,6 +60,7 @@ def init_db(conn: sqlite3.Connection) -> None:
                 tenant_id TEXT NOT NULL,
                 nombre TEXT NOT NULL,
                 activo INTEGER NOT NULL DEFAULT 1,
+                equipamiento TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
             );
 
@@ -43,6 +69,7 @@ def init_db(conn: sqlite3.Connection) -> None:
                 tenant_id TEXT NOT NULL,
                 nombre TEXT NOT NULL,
                 dni TEXT,
+                telefono TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
             );
 
@@ -70,3 +97,4 @@ def init_db(conn: sqlite3.Connection) -> None:
                 ON turnos(tenant_id, sillon_id, fecha);
             """
         )
+        _migrar_columnas_faltantes(conn)

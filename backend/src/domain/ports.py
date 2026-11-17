@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from src.domain.models import ESTADOS_ACTIVOS, Turno
+from src.domain.models import ESTADOS_ACTIVOS, Paciente, Profesional, Sillon, Turno
 
 
 class RepositorioTurnosPort(Protocol):
@@ -25,6 +25,47 @@ class RepositorioTurnosPort(Protocol):
         profesional_id: str | None = None,
         sillon_id: str | None = None,
     ) -> list[Turno]: ...
+
+
+class RepositorioProfesionalesPort(Protocol):
+    """Puerto de persistencia de profesionales filtrado por tenant."""
+
+    def guardar(self, profesional: Profesional) -> Profesional: ...
+
+    def obtener_por_id(
+        self, tenant_id: str, profesional_id: str
+    ) -> Profesional | None: ...
+
+    def listar_por_tenant(
+        self, tenant_id: str, solo_activos: bool | None = None
+    ) -> list[Profesional]: ...
+
+
+class RepositorioSillonesPort(Protocol):
+    """Puerto de persistencia de sillones/boxes filtrado por tenant."""
+
+    def guardar(self, sillon: Sillon) -> Sillon: ...
+
+    def obtener_por_id(self, tenant_id: str, sillon_id: str) -> Sillon | None: ...
+
+    def listar_por_tenant(
+        self, tenant_id: str, solo_activos: bool | None = None
+    ) -> list[Sillon]: ...
+
+
+class RepositorioPacientesPort(Protocol):
+    """Puerto de persistencia de pacientes filtrado por tenant."""
+
+    def guardar(self, paciente: Paciente) -> Paciente: ...
+
+    def obtener_por_id(self, tenant_id: str, paciente_id: str) -> Paciente | None: ...
+
+    def listar_por_tenant(
+        self,
+        tenant_id: str,
+        dni: str | None = None,
+        nombre: str | None = None,
+    ) -> list[Paciente]: ...
 
 
 class RepositorioTurnosEnMemoria:

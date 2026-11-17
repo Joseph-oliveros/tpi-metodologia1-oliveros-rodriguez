@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from src.api.schemas import ErrorResponse
 from src.domain.exceptions import (
+    RecursoDuplicadoError,
     SolapamientoProfesionalError,
     SolapamientoSillonError,
     TransicionInvalidaError,
@@ -71,5 +72,16 @@ def register_exception_handlers(app: FastAPI) -> None:
             status.HTTP_404_NOT_FOUND,
             str(exc),
             "RECURSO_NO_ENCONTRADO",
+            exc.recurso,
+        )
+
+    @app.exception_handler(RecursoDuplicadoError)
+    def handle_recurso_duplicado(
+        _request: Request, exc: RecursoDuplicadoError
+    ) -> JSONResponse:
+        return _error_json(
+            status.HTTP_409_CONFLICT,
+            str(exc),
+            "RECURSO_DUPLICADO",
             exc.recurso,
         )
